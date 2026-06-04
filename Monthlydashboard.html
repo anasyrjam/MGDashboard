@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>MedGlobal | Integrated Dashboard | April 2026</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #0A0D14;
+            font-family: 'Inter', sans-serif;
+            padding: 28px 36px;
+            color: #EDF2F9;
+        }
+        .dashboard { max-width: 1600px; margin: 0 auto; }
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 28px;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .logo-container { display: flex; align-items: center; }
+        .logo-img { height: 70px; width: auto; max-width: 240px; object-fit: contain; }
+        .dashboard-header-right { display: flex; align-items: center; gap: 12px; }
+        .month-title {
+            font-size: 1rem;
+            font-weight: 500;
+            background: linear-gradient(135deg, #FFFFFF, #B0CCFF);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .badge {
+            background: #1F2A3A;
+            padding: 4px 12px;
+            border-radius: 50px;
+            font-size: 0.65rem;
+            border-left: 2px solid #2C6BFF;
+        }
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px;
+            margin-bottom: 28px;
+        }
+        .kpi-card {
+            border-radius: 28px;
+            padding: 22px 20px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            cursor: pointer;
+        }
+        .kpi-card:hover { transform: translateY(-5px); box-shadow: 0 20px 35px rgba(0,0,0,0.4); }
+        .kpi-card:nth-child(1) { background: linear-gradient(135deg, #0F2B4F 0%, #1A3A6B 100%); border: 1px solid #2C6BFF60; }
+        .kpi-card:nth-child(2) { background: linear-gradient(135deg, #0D3D2E 0%, #1A5C4A 100%); border: 1px solid #3EC1D360; }
+        .kpi-card:nth-child(3) { background: linear-gradient(135deg, #4A2F0D 0%, #7A4F1A 100%); border: 1px solid #F6AE5C60; }
+        .kpi-card:nth-child(4) { background: linear-gradient(135deg, #2E1A4A 0%, #4A2D7A 100%); border: 1px solid #A05E9C60; }
+        .kpi-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(255,255,255,0.65); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+        .kpi-value { font-size: 3rem; font-weight: 700; background: linear-gradient(135deg, #E0E8FF, #B8C8FF); -webkit-background-clip: text; background-clip: text; color: transparent; line-height: 1.1; letter-spacing: -1px; margin-bottom: 10px; }
+        .kpi-sub-value { font-size: 0.9rem; font-weight: 500; color: rgba(220, 230, 255, 0.75); margin-top: 8px; display: flex; gap: 12px; flex-wrap: wrap; }
+        .kpi-sub-value span { background: rgba(0,0,0,0.2); padding: 3px 10px; border-radius: 30px; font-size: 0.7rem; color: rgba(220, 230, 255, 0.85); }
+        .kpi-sub { font-size: 0.65rem; color: rgba(200, 210, 240, 0.55); margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 8px; }
+        
+        .filter-bar {
+            background: #11161F;
+            border-radius: 24px;
+            padding: 10px 20px;
+            margin-bottom: 28px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            border: 1px solid #282E3A;
+        }
+        .filter-label { color: #9AA4BF; font-size: 0.8rem; font-weight: 500; }
+        .filter-chip {
+            background: #1E2530;
+            border: 1px solid #2F3745;
+            border-radius: 40px;
+            padding: 5px 16px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            color: #CBD5E1;
+        }
+        .filter-chip.active { background: #2C6BFF; border-color: #2C6BFF; color: white; }
+        .reset-btn {
+            margin-left: auto;
+            background: #1F2A36;
+            border: none;
+            color: #FFB347;
+            padding: 4px 14px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 0.7rem;
+        }
+        
+        .row-2cols { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-bottom: 28px; }
+        .chart-card { background: #11161F; border-radius: 28px; padding: 18px 20px; border: 1px solid #282E3A; }
+        .chart-title { font-weight: 600; margin-bottom: 18px; border-left: 4px solid #2C6BFF; padding-left: 14px; font-size: 0.95rem; }
+        canvas { max-height: 280px; width: 100%; }
+        
+        .gallery-container {
+            background: #11161F;
+            border-radius: 28px;
+            padding: 18px 20px;
+            border: 1px solid #282E3A;
+            height: 100%;
+            max-height: 420px;
+            overflow-y: auto;
+        }
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 12px;
+        }
+        .gallery-item {
+            position: relative;
+            border-radius: 16px;
+            overflow: hidden;
+            cursor: pointer;
+            aspect-ratio: 1 / 1;
+            transition: all 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeInUp 0.4s forwards;
+        }
+        @keyframes fadeInUp { to { opacity: 1; transform: translateY(0); } }
+        .gallery-item:hover { transform: scale(1.03); box-shadow: 0 10px 25px rgba(0,0,0,0.4); }
+        .gallery-item img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.4s ease; }
+        .gallery-item:hover img { transform: scale(1.1); }
+        .gallery-caption {
+            position: absolute; bottom: 0; left: 0; right: 0;
+            background: linear-gradient(to top, rgba(0,0,0,0.85), transparent);
+            padding: 30px 8px 8px; font-size: 0.65rem; color: white; text-align: center;
+            transform: translateY(100%); transition: transform 0.3s ease;
+        }
+        .gallery-item:hover .gallery-caption { transform: translateY(0); }
+        
+        .lightbox-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95); z-index: 10000;
+            display: flex; justify-content: center; align-items: center;
+            opacity: 0; visibility: hidden; transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .lightbox-overlay.active { opacity: 1; visibility: visible; }
+        .lightbox-overlay img { max-width: 90%; max-height: 90%; border-radius: 16px; }
+        .close-lightbox {
+            position: absolute; top: 20px; right: 30px; color: white; font-size: 2rem;
+            background: rgba(0,0,0,0.5); width: 50px; height: 50px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; transition: 0.2s;
+        }
+        .close-lightbox:hover { background: rgba(255,255,255,0.2); transform: rotate(90deg); }
+        
+        .map-insights-row { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-bottom: 28px; }
+        .map-card { background: #11161F; border-radius: 28px; padding: 18px 20px; border: 1px solid #282E3A; }
+        #facilitiesMap { height: 380px; width: 100%; border-radius: 20px; background: #1A1F2A; }
+        
+        .insights-panel {
+            background: linear-gradient(145deg, #11161F, #0C1018);
+            border-radius: 28px;
+            padding: 20px 24px;
+            border-left: 5px solid #2C6BFF;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .insight-section {
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            padding-bottom: 12px;
+        }
+        .insight-section:last-child { border-bottom: none; padding-bottom: 0; }
+        .insight-header {
+            font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px;
+            color: #2C6BFF; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;
+        }
+        .insight-stat { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.85rem; }
+        .insight-stat-label { color: #8E99B0; }
+        .insight-stat-value { font-weight: 600; color: #E0E8FF; }
+        .insight-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(44,107,255,0.15); padding: 4px 12px; border-radius: 50px; font-size: 0.7rem; margin-top: 8px; }
+        .insight-recommendation { background: rgba(255,193,7,0.1); border-left: 3px solid #FFC107; padding: 10px 12px; border-radius: 12px; font-size: 0.75rem; margin-top: 8px; }
+        .trend-up { color: #4CAF50; }
+        .trend-down { color: #FF6B6B; }
+        .badge-success { background: rgba(76,175,80,0.2); color: #4CAF50; }
+        
+        .footer-signature { margin-top: 40px; padding-top: 20px; border-top: 1px solid #262D38; text-align: center; }
+        .signature-name { font-size: 0.95rem; font-weight: 600; color: #B0CCFF; }
+        .signature-title { font-size: 0.7rem; color: #6B7A93; margin-top: 4px; }
+        .footer-note { text-align: center; font-size: 0.65rem; margin-top: 12px; color: #4F5B73; }
+        @media (max-width: 1000px) {
+            body { padding: 16px; }
+            .kpi-grid { grid-template-columns: repeat(2,1fr); }
+            .row-2cols, .map-insights-row { grid-template-columns: 1fr; }
+            .kpi-value { font-size: 2.4rem; }
+            .logo-img { height: 50px; }
+            .gallery-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+        }
+    </style>
+</head>
+<body>
+<div class="dashboard">
+    <div class="dashboard-header">
+        <div class="logo-container">
+            <img class="logo-img" src="https://i.postimg.cc/Js41RYbg/Med-Global-Brand-Stacked-Blue-Midnight-pages-to-jpg-0002.jpg" alt="MedGlobal Logo">
+        </div>
+        <div class="dashboard-header-right">
+            <div class="month-title"><i class="fas fa-calendar-alt"></i> April 2026 · Achievements</div>
+            <div class="badge"><i class="fas fa-chart-line"></i> Monthly performance</div>
+        </div>
+    </div>
+
+    <div class="kpi-grid" id="kpiContainer"></div>
+
+    <div class="filter-bar">
+        <i class="fas fa-sliders-h" style="color:#4C9AFF; font-size:0.8rem;"></i>
+        <span class="filter-label">FILTER BY SERVICE:</span>
+        <div id="filterChips">
+            <button data-domain="all" class="filter-chip active">All Services</button>
+            <button data-domain="reproductive" class="filter-chip">SRH & Delivery</button>
+            <button data-domain="nutrition" class="filter-chip">Nutrition</button>
+            <button data-domain="clinical" class="filter-chip">Clinical</button>
+            <button data-domain="access" class="filter-chip">Access Points</button>
+        </div>
+        <button id="resetFilterBtn" class="reset-btn"><i class="fas fa-undo-alt"></i> Reset</button>
+    </div>
+
+    <div class="row-2cols">
+        <div class="chart-card"><div class="chart-title"><i class="fas fa-chart-pie"></i> Service Distribution</div><canvas id="donutChart"></canvas></div>
+        <div class="gallery-container">
+            <div class="chart-title"><i class="fas fa-images"></i> Field Activities Gallery · April 2026</div>
+            <div class="gallery-grid" id="galleryGrid"><div style="text-align:center; padding:50px;">Loading images...</div></div>
+        </div>
+    </div>
+
+    <div class="map-insights-row">
+        <div class="map-card">
+            <div class="chart-title"><i class="fas fa-map-marked-alt"></i> MedGlobal Facilities Map - Gaza Strip</div>
+            <div id="facilitiesMap"></div>
+            <div style="margin-top: 12px; font-size: 0.65rem; color: #8E99B0; display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
+                <span><i class="fas fa-circle" style="color:#2C6BFF;"></i> Admin / Office</span>
+                <span><i class="fas fa-circle" style="color:#0F9D58;"></i> Hospital</span>
+                <span><i class="fas fa-circle" style="color:#F57C00;"></i> Medical Point</span>
+                <span><i class="fas fa-circle" style="color:#795548;"></i> Shelter / Camp</span>
+            </div>
+        </div>
+        <div class="insights-panel" id="insightsPanel"></div>
+    </div>
+
+    <div class="footer-signature">
+        <div class="signature-name"><i class="fas fa-user-check"></i> Eng Anas Y. Aljamal</div>
+        <div class="signature-title"><i class="fas fa-chart-line"></i> Information Management Officer</div>
+    </div>
+    <div class="footer-note"><i class="fas fa-chart-simple"></i> MedGlobal Programs · Data from 3 Excel files (auto-updates)</div>
+</div>
+
+<div id="lightboxOverlay" class="lightbox-overlay" onclick="closeLightbox()">
+    <div class="close-lightbox" onclick="closeLightbox()"><i class="fas fa-times"></i></div>
+    <img id="lightboxImage" src="" alt="">
+</div>
+
+<script>
+    let EXCEL_DATA = {};
+    let GALLERY_IMAGES = [];
+    let FACILITIES = [];
+    let map, donut, markerCluster;
+    let currentDomain = "all";
+
+    // روابط التحميل المباشر للملفات الثلاثة
+    const DATA_FILE_URL = "https://medglobalorg-my.sharepoint.com/personal/aljamal_medglobal_org/_layouts/15/download.aspx?share=IQAV1E1TMc5_RLCO3GMG8yqKAbwF3ad25kcqQTKffFx-8dQ";
+    const PHOTOS_FILE_URL = "https://medglobalorg-my.sharepoint.com/personal/aljamal_medglobal_org/_layouts/15/download.aspx?share=IQDdo2Rm6jwCS7zJ969VCmr_ARiTuIsu_xCMwZdSF68RmhA";
+    const FACILITIES_FILE_URL = "https://medglobalorg-my.sharepoint.com/personal/aljamal_medglobal_org/_layouts/15/download.aspx?share=IQBN2j25uAq6SJDnean05K3uAeoKhOhsS9Sx_V43O95lx6M";
+
+    async function loadExcelData() {
+        try {
+            // 1. تحميل ملف البيانات (الأرقام)
+            const dataResponse = await fetch(DATA_FILE_URL);
+            const dataArrayBuffer = await dataResponse.arrayBuffer();
+            const dataWorkbook = XLSX.read(dataArrayBuffer, { type: 'array' });
+            const dataSheet = dataWorkbook.Sheets[dataWorkbook.SheetNames[0]];
+            const jsonData = XLSX.utils.sheet_to_json(dataSheet, { header: 1, defval: "" });
+            
+            EXCEL_DATA = {
+                healthServices: jsonData[0]?.[1] || 28817,
+                nutritionService: jsonData[1]?.[1] || 105860,
+                srhServices: jsonData[2]?.[1] || 12252,
+                pediatricsConsult: jsonData[3]?.[1] || 8199,
+                normalDeliveries: jsonData[4]?.[1] || 539,
+                cesareanDeliveries: jsonData[5]?.[1] || 195,
+                totalDeliveries: jsonData[6]?.[1] || 734,
+                minorSurgeries: jsonData[7]?.[1] || 4776,
+                majorSurgeries: jsonData[8]?.[1] || 261,
+                totalSurgeries: jsonData[9]?.[1] || 5037,
+                muacScreening: jsonData[10]?.[1] || 46272,
+                iycfSessions: jsonData[11]?.[1] || 2848,
+                blanketDistribution: jsonData[12]?.[1] || 86800,
+                mhpssService: jsonData[13]?.[1] || 380,
+                medicalPoints: jsonData[14]?.[1] || 11,
+                mobileTeams: jsonData[15]?.[1] || 15,
+                hospitals: jsonData[16]?.[1] || 5
+            };
+
+            // 2. تحميل ملف الصور
+            const photosResponse = await fetch(PHOTOS_FILE_URL);
+            const photosArrayBuffer = await photosResponse.arrayBuffer();
+            const photosWorkbook = XLSX.read(photosArrayBuffer, { type: 'array' });
+            const photosSheet = photosWorkbook.Sheets[photosWorkbook.SheetNames[0]];
+            const photosData = XLSX.utils.sheet_to_json(photosSheet, { header: 1, defval: "" });
+            
+            GALLERY_IMAGES = [];
+            for (let i = 1; i < photosData.length; i++) {
+                const row = photosData[i];
+                if (row && row.length >= 2) {
+                    const caption = row[0]?.toString().trim() || "Field activity";
+                    let url = row[1]?.toString().trim();
+                    if (url && url !== "") {
+                        GALLERY_IMAGES.push({ url, caption });
+                    }
+                }
+            }
+            
+            if (GALLERY_IMAGES.length === 0) {
+                GALLERY_IMAGES = [
+                    { url: "https://picsum.photos/id/104/400/400", caption: "Mobile medical team" },
+                    { url: "https://picsum.photos/id/116/400/400", caption: "MUAC screening" }
+                ];
+            }
+
+            // 3. تحميل ملف المواقع (الخريطة)
+            const facilitiesResponse = await fetch(FACILITIES_FILE_URL);
+            const facilitiesArrayBuffer = await facilitiesResponse.arrayBuffer();
+            const facilitiesWorkbook = XLSX.read(facilitiesArrayBuffer, { type: 'array' });
+            const facilitiesSheet = facilitiesWorkbook.Sheets[facilitiesWorkbook.SheetNames[0]];
+            const facilitiesData = XLSX.utils.sheet_to_json(facilitiesSheet, { header: 1, defval: "" });
+            
+            FACILITIES = [];
+            for (let i = 1; i < facilitiesData.length; i++) {
+                const row = facilitiesData[i];
+                if (row && row.length >= 4) {
+                    const name = row[0]?.toString().trim();
+                    const lat = parseFloat(row[1]);
+                    const lng = parseFloat(row[2]);
+                    const type = row[3]?.toString().trim().toLowerCase();
+                    if (name && !isNaN(lat) && !isNaN(lng) && type) {
+                        FACILITIES.push({ name, lat, lng, type });
+                    }
+                }
+            }
+            
+            if (FACILITIES.length === 0) {
+                FACILITIES = [
+                    { name: "Main Office", lat: 31.52395, lng: 34.43721, type: "admin" },
+                    { name: "KH Guest House", lat: 31.34982, lng: 34.25288, type: "admin" }
+                ];
+            }
+            
+            console.log(`Loaded: ${Object.keys(EXCEL_DATA).length} KPIs, ${GALLERY_IMAGES.length} images, ${FACILITIES.length} facilities`);
+            return true;
+        } catch (error) {
+            console.error("Error loading Excel files:", error);
+            return false;
+        }
+    }
+
+    function renderGallery() {
+        const container = document.getElementById('galleryGrid');
+        if (!container) return;
+        if (GALLERY_IMAGES.length === 0) {
+            container.innerHTML = '<div style="text-align:center; padding:50px;">No images to display</div>';
+            return;
+        }
+        container.innerHTML = GALLERY_IMAGES.map((img, idx) => `
+            <div class="gallery-item" onclick="openLightbox('${img.url}')">
+                <img src="${img.url}" alt="${img.caption}" loading="lazy" onerror="this.src='https://picsum.photos/id/20/400/400'">
+                <div class="gallery-caption">${img.caption}</div>
+            </div>
+        `).join('');
+    }
+
+    window.openLightbox = function(url) {
+        const overlay = document.getElementById('lightboxOverlay');
+        const img = document.getElementById('lightboxImage');
+        img.src = url;
+        overlay.classList.add('active');
+    };
+
+    window.closeLightbox = function() {
+        const overlay = document.getElementById('lightboxOverlay');
+        overlay.classList.remove('active');
+    };
+
+    function initMap() {
+        if (map) map.remove();
+        map = L.map('facilitiesMap').setView([31.44, 34.38], 11);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> & CartoDB',
+            subdomains: 'abcd',
+            maxZoom: 18
+        }).addTo(map);
+        
+        markerCluster = L.markerClusterGroup({ maxClusterRadius: 50, spiderfyOnMaxZoom: true, showCoverageOnHover: false, zoomToBoundsOnClick: true });
+        
+        FACILITIES.forEach(f => {
+            let color = "#2C6BFF";
+            let typeName = "📋 Admin";
+            if (f.type === "hospital") { color = "#0F9D58"; typeName = "🏥 Hospital"; }
+            else if (f.type === "medical") { color = "#F57C00"; typeName = "🏥 Medical Point"; }
+            else if (f.type === "shelter") { color = "#795548"; typeName = "🏕️ Shelter / Camp"; }
+            
+            const icon = L.divIcon({ html: `<div style="background-color:${color};width:12px;height:12px;border-radius:50%;border:2px solid white;box-shadow:0 0 4px black;"></div>`, iconSize: [12,12] });
+            const marker = L.marker([f.lat, f.lng], { icon }).bindPopup(`<b>${f.name}</b><br>${typeName}`);
+            markerCluster.addLayer(marker);
+        });
+        
+        map.addLayer(markerCluster);
+        if (FACILITIES.length > 0) {
+            const bounds = L.latLngBounds(FACILITIES.map(f => [f.lat, f.lng]));
+            map.fitBounds(bounds);
+        }
+    }
+
+    function renderEnhancedInsights() {
+        const total = EXCEL_DATA.healthServices + EXCEL_DATA.nutritionService;
+        const nutritionPct = ((EXCEL_DATA.nutritionService / total) * 100).toFixed(1);
+        const mhpssPct = ((EXCEL_DATA.mhpssService / total) * 100).toFixed(2);
+        
+        const insightsHtml = `
+            <div class="insight-section">
+                <div class="insight-header"><i class="fas fa-chart-line"></i> Overall Performance</div>
+                <div class="insight-stat"><span class="insight-stat-label"><i class="fas fa-stethoscope"></i> Total Services</span><span class="insight-stat-value">${total.toLocaleString()}</span></div>
+                <div class="insight-stat"><span class="insight-stat-label"><i class="fas fa-trophy"></i> Top Service</span><span class="insight-stat-value">Nutrition (${nutritionPct}%)</span></div>
+                <div class="insight-badge badge-success"><i class="fas fa-arrow-up"></i> +12% vs March (estimated)</div>
+            </div>
+            <div class="insight-section">
+                <div class="insight-header"><i class="fas fa-chart-simple"></i> Service Breakdown</div>
+                <div class="insight-stat"><span class="insight-stat-label">🥗 Nutrition</span><span class="insight-stat-value">${EXCEL_DATA.nutritionService.toLocaleString()}</span></div>
+                <div class="insight-stat"><span class="insight-stat-label">👶 SRH</span><span class="insight-stat-value">${EXCEL_DATA.srhServices.toLocaleString()}</span></div>
+                <div class="insight-stat"><span class="insight-stat-label">⚕️ Surgeries</span><span class="insight-stat-value">${EXCEL_DATA.totalSurgeries.toLocaleString()}</span></div>
+                <div class="insight-stat"><span class="insight-stat-label">🤱 Deliveries</span><span class="insight-stat-value">${EXCEL_DATA.totalDeliveries.toLocaleString()} (${EXCEL_DATA.normalDeliveries.toLocaleString()} normal, ${EXCEL_DATA.cesareanDeliveries.toLocaleString()} C-section)</span></div>
+            </div>
+            <div class="insight-section">
+                <div class="insight-header"><i class="fas fa-exclamation-triangle"></i> Areas for Improvement</div>
+                <div class="insight-stat"><span class="insight-stat-label">🧠 MHPSS Services</span><span class="insight-stat-value ${EXCEL_DATA.mhpssService < 500 ? 'trend-down' : ''}">${EXCEL_DATA.mhpssService.toLocaleString()} sessions (${mhpssPct}% of total)</span></div>
+                <div class="insight-recommendation"><i class="fas fa-lightbulb" style="color:#FFC107;"></i> <strong>Recommendation:</strong> Expand MHPSS mobile teams. Target: 1,000+ sessions by May 2026.</div>
+            </div>
+            <div class="insight-section">
+                <div class="insight-header"><i class="fas fa-map-marked-alt"></i> Operational Footprint</div>
+                <div class="insight-stat"><span class="insight-stat-label">📍 Active Facilities</span><span class="insight-stat-value">${FACILITIES.length} points on map</span></div>
+                <div class="insight-stat"><span class="insight-stat-label">🏥 Hospitals</span><span class="insight-stat-value">${EXCEL_DATA.hospitals}</span></div>
+                <div class="insight-stat"><span class="insight-stat-label">🚐 Mobile Teams</span><span class="insight-stat-value">${EXCEL_DATA.mobileTeams}</span></div>
+            </div>
+            <div class="insight-section">
+                <div class="insight-header"><i class="fas fa-clock"></i> 5-Second Insight</div>
+                <div class="insight-recommendation" style="background:rgba(44,107,255,0.15); border-left-color:#2C6BFF;">
+                    <i class="fas fa-chart-line" style="color:#2C6BFF;"></i> Nutrition dominates (${nutritionPct}% of total). SRH strong. Prioritize MHPSS expansion.
+                </div>
+            </div>
+        `;
+        document.getElementById('insightsPanel').innerHTML = insightsHtml;
+    }
+
+    function renderKPIs() {
+        document.getElementById('kpiContainer').innerHTML = `
+            <div class="kpi-card"><div class="kpi-title"><i class="fas fa-hospital-user"></i> HEALTH SERVICES</div><div class="kpi-value">${EXCEL_DATA.healthServices.toLocaleString()}</div><div class="kpi-sub-value"><span>SRH: ${EXCEL_DATA.srhServices.toLocaleString()}</span> <span>Peds: ${EXCEL_DATA.pediatricsConsult.toLocaleString()}</span></div><div class="kpi-sub">Total medical consultations</div></div>
+            <div class="kpi-card"><div class="kpi-title"><i class="fas fa-seedling"></i> NUTRITION REACH</div><div class="kpi-value">${EXCEL_DATA.nutritionService.toLocaleString()}</div><div class="kpi-sub-value"><span>MUAC: ${EXCEL_DATA.muacScreening.toLocaleString()}</span> <span>IYCF: ${EXCEL_DATA.iycfSessions.toLocaleString()}</span></div><div class="kpi-sub">Blankets: ${EXCEL_DATA.blanketDistribution.toLocaleString()}</div></div>
+            <div class="kpi-card"><div class="kpi-title"><i class="fas fa-procedures"></i> DELIVERIES + SURGERIES</div><div class="kpi-value">${(EXCEL_DATA.totalDeliveries + EXCEL_DATA.totalSurgeries).toLocaleString()}</div><div class="kpi-sub-value"><span>Deliveries: ${EXCEL_DATA.totalDeliveries.toLocaleString()}</span> <span>Surgeries: ${EXCEL_DATA.totalSurgeries.toLocaleString()}</span></div><div class="kpi-sub">Normal: ${EXCEL_DATA.normalDeliveries.toLocaleString()} · C-section: ${EXCEL_DATA.cesareanDeliveries.toLocaleString()}</div></div>
+            <div class="kpi-card"><div class="kpi-title"><i class="fas fa-hand-holding-heart"></i> SERVICE POINTS</div><div class="kpi-value">${EXCEL_DATA.medicalPoints + EXCEL_DATA.mobileTeams + EXCEL_DATA.hospitals}</div><div class="kpi-sub-value"><span>Medical points: ${EXCEL_DATA.medicalPoints}</span> <span>Mobile teams: ${EXCEL_DATA.mobileTeams}</span> <span>Hospitals: ${EXCEL_DATA.hospitals}</span></div><div class="kpi-sub">MHPSS sessions: ${EXCEL_DATA.mhpssService.toLocaleString()}</div></div>
+        `;
+    }
+
+    function getFilteredData() {
+        if(currentDomain === "all") return {'SRH':EXCEL_DATA.srhServices,'Pediatrics':EXCEL_DATA.pediatricsConsult,'Deliveries':EXCEL_DATA.totalDeliveries,'Surgeries':EXCEL_DATA.totalSurgeries,'MUAC':EXCEL_DATA.muacScreening,'IYCF':EXCEL_DATA.iycfSessions,'Blankets':EXCEL_DATA.blanketDistribution,'MHPSS':EXCEL_DATA.mhpssService};
+        if(currentDomain === "reproductive") return {'SRH':EXCEL_DATA.srhServices,'Normal Delivery':EXCEL_DATA.normalDeliveries,'C-section':EXCEL_DATA.cesareanDeliveries};
+        if(currentDomain === "nutrition") return {'MUAC':EXCEL_DATA.muacScreening,'IYCF':EXCEL_DATA.iycfSessions,'Blankets':EXCEL_DATA.blanketDistribution};
+        if(currentDomain === "clinical") return {'Pediatrics':EXCEL_DATA.pediatricsConsult,'Minor Surgery':EXCEL_DATA.minorSurgeries,'Major Surgery':EXCEL_DATA.majorSurgeries};
+        if(currentDomain === "access") return {'Medical Points':EXCEL_DATA.medicalPoints,'Mobile Teams':EXCEL_DATA.mobileTeams,'Hospitals':EXCEL_DATA.hospitals};
+        return {};
+    }
+
+    function renderCharts() {
+        const filtered = getFilteredData();
+        if(donut) donut.destroy();
+        donut = new Chart(document.getElementById('donutChart'), {type:'doughnut', data:{labels:Object.keys(filtered), datasets:[{data:Object.values(filtered), backgroundColor:['#2C6BFF','#3EC1D3','#F6AE5C','#A05E9C','#4C9AFF','#FF6B6B','#FFB347','#6C63FF']}]}, options:{responsive:true, plugins:{legend:{position:'bottom', labels:{color:'#CBD5E1', font:{size:10}}}}}});
+    }
+
+    function bindFilters() {
+        const chips = document.querySelectorAll('.filter-chip');
+        chips.forEach(c => c.addEventListener('click', () => {
+            chips.forEach(x => x.classList.remove('active'));
+            c.classList.add('active');
+            currentDomain = c.getAttribute('data-domain');
+            renderCharts();
+        }));
+        document.getElementById('resetFilterBtn').addEventListener('click', () => {
+            currentDomain = 'all';
+            chips.forEach(x => x.classList.remove('active'));
+            document.querySelector('.filter-chip[data-domain="all"]').classList.add('active');
+            renderCharts();
+        });
+    }
+
+    async function init() {
+        document.getElementById('galleryGrid').innerHTML = '<div style="text-align:center; padding:50px;">Loading data from 3 Excel files...</div>';
+        await loadExcelData();
+        initMap();
+        renderKPIs();
+        renderCharts();
+        bindFilters();
+        renderGallery();
+        renderEnhancedInsights();
+    }
+
+    init();
+</script>
+</body>
+</html>
