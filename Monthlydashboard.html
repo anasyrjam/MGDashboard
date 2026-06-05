@@ -70,7 +70,6 @@
         .kpi-sub-value { font-size: 0.9rem; font-weight: 500; color: rgba(220, 230, 255, 0.75); margin-top: 8px; display: flex; gap: 12px; flex-wrap: wrap; }
         .kpi-sub-value span { background: rgba(0,0,0,0.2); padding: 3px 10px; border-radius: 30px; font-size: 0.7rem; color: rgba(220, 230, 255, 0.85); }
         .kpi-sub { font-size: 0.65rem; color: rgba(200, 210, 240, 0.55); margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 8px; }
-        
         .filter-bar {
             background: #11161F;
             border-radius: 24px;
@@ -103,7 +102,6 @@
             cursor: pointer;
             font-size: 0.7rem;
         }
-        
         .row-2cols { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-bottom: 28px; }
         .chart-card { background: #11161F; border-radius: 28px; padding: 18px 20px; border: 1px solid #282E3A; }
         .chart-title { font-weight: 600; margin-bottom: 18px; border-left: 4px solid #2C6BFF; padding-left: 14px; font-size: 0.95rem; }
@@ -189,7 +187,6 @@
         .insight-stat-value { font-weight: 600; color: #E0E8FF; }
         .insight-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(44,107,255,0.15); padding: 4px 12px; border-radius: 50px; font-size: 0.7rem; margin-top: 8px; }
         .insight-recommendation { background: rgba(255,193,7,0.1); border-left: 3px solid #FFC107; padding: 10px 12px; border-radius: 12px; font-size: 0.75rem; margin-top: 8px; }
-        .trend-up { color: #4CAF50; }
         .trend-down { color: #FF6B6B; }
         .badge-success { background: rgba(76,175,80,0.2); color: #4CAF50; }
         
@@ -260,7 +257,7 @@
         <div class="signature-name"><i class="fas fa-user-check"></i> Eng Anas Y. Aljamal</div>
         <div class="signature-title"><i class="fas fa-chart-line"></i> Information Management Officer</div>
     </div>
-    <div class="footer-note"><i class="fas fa-chart-simple"></i> MedGlobal Programs · Data from 3 Excel files (auto-updates)</div>
+    <div class="footer-note"><i class="fas fa-chart-simple"></i> MedGlobal Programs · Images loaded directly from GitHub</div>
 </div>
 
 <div id="lightboxOverlay" class="lightbox-overlay" onclick="closeLightbox()">
@@ -270,14 +267,49 @@
 
 <script>
     let EXCEL_DATA = {};
-    let GALLERY_IMAGES = [];
     let FACILITIES = [];
+    let GALLERY_IMAGES = [];
     let map, donut, markerCluster;
     let currentDomain = "all";
 
-    // روابط التحميل المباشر للملفات الثلاثة
+    // GitHub repository info
+    const GITHUB_USER = "anasyrjam";
+    const GITHUB_REPO = "MGDashboard";
+    const IMAGES_FOLDER = "images";
+    
+    // List of image filenames (add all your photo1.jpeg, photo2.jpeg, etc.)
+    // IMPORTANT: Update this list whenever you add new images to the folder
+    const IMAGE_FILES = [
+        "photo1.jpeg",
+        "photo2.jpeg",
+        "photo3.jpeg",
+        "photo4.jpeg",
+        "photo5.jpeg",
+        "photo6.jpeg",
+        "photo7.jpeg",
+        "photo8.jpeg",
+        "photo9.jpeg"
+    ];
+
+    // Build gallery images directly from GitHub
+    function buildGalleryFromGitHub() {
+        const baseUrl = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/${IMAGES_FOLDER}/`;
+        GALLERY_IMAGES = [];
+        for (let i = 0; i < IMAGE_FILES.length; i++) {
+            const filename = IMAGE_FILES[i];
+            // Extract caption from filename (remove extension, replace underscores with spaces)
+            let caption = filename.replace(/\.[^/.]+$/, "").replace(/_/g, " ");
+            caption = caption.charAt(0).toUpperCase() + caption.slice(1);
+            GALLERY_IMAGES.push({
+                url: baseUrl + filename,
+                caption: caption
+            });
+        }
+        console.log(`Built ${GALLERY_IMAGES.length} images from GitHub`);
+    }
+
+    // روابط التحميل المباشر للملفات
     const DATA_FILE_URL = "https://medglobalorg-my.sharepoint.com/personal/aljamal_medglobal_org/_layouts/15/download.aspx?share=IQAV1E1TMc5_RLCO3GMG8yqKAbwF3ad25kcqQTKffFx-8dQ";
-    const PHOTOS_FILE_URL = "https://medglobalorg-my.sharepoint.com/personal/aljamal_medglobal_org/_layouts/15/download.aspx?share=IQDdo2Rm6jwCS7zJ969VCmr_ARiTuIsu_xCMwZdSF68RmhA";
     const FACILITIES_FILE_URL = "https://medglobalorg-my.sharepoint.com/personal/aljamal_medglobal_org/_layouts/15/download.aspx?share=IQBN2j25uAq6SJDnean05K3uAeoKhOhsS9Sx_V43O95lx6M";
 
     async function loadExcelData() {
@@ -309,33 +341,7 @@
                 hospitals: jsonData[16]?.[1] || 5
             };
 
-            // 2. تحميل ملف الصور
-            const photosResponse = await fetch(PHOTOS_FILE_URL);
-            const photosArrayBuffer = await photosResponse.arrayBuffer();
-            const photosWorkbook = XLSX.read(photosArrayBuffer, { type: 'array' });
-            const photosSheet = photosWorkbook.Sheets[photosWorkbook.SheetNames[0]];
-            const photosData = XLSX.utils.sheet_to_json(photosSheet, { header: 1, defval: "" });
-            
-            GALLERY_IMAGES = [];
-            for (let i = 1; i < photosData.length; i++) {
-                const row = photosData[i];
-                if (row && row.length >= 2) {
-                    const caption = row[0]?.toString().trim() || "Field activity";
-                    let url = row[1]?.toString().trim();
-                    if (url && url !== "") {
-                        GALLERY_IMAGES.push({ url, caption });
-                    }
-                }
-            }
-            
-            if (GALLERY_IMAGES.length === 0) {
-                GALLERY_IMAGES = [
-                    { url: "https://picsum.photos/id/104/400/400", caption: "Mobile medical team" },
-                    { url: "https://picsum.photos/id/116/400/400", caption: "MUAC screening" }
-                ];
-            }
-
-            // 3. تحميل ملف المواقع (الخريطة)
+            // 2. تحميل ملف المواقع (الخريطة)
             const facilitiesResponse = await fetch(FACILITIES_FILE_URL);
             const facilitiesArrayBuffer = await facilitiesResponse.arrayBuffer();
             const facilitiesWorkbook = XLSX.read(facilitiesArrayBuffer, { type: 'array' });
@@ -359,14 +365,27 @@
             if (FACILITIES.length === 0) {
                 FACILITIES = [
                     { name: "Main Office", lat: 31.52395, lng: 34.43721, type: "admin" },
-                    { name: "KH Guest House", lat: 31.34982, lng: 34.25288, type: "admin" }
+                    { name: "KH Guest House", lat: 31.34982, lng: 34.25288, type: "admin" },
+                    { name: "Al Quds Hospital", lat: 31.50623, lng: 34.43032, type: "hospital" }
                 ];
             }
             
-            console.log(`Loaded: ${Object.keys(EXCEL_DATA).length} KPIs, ${GALLERY_IMAGES.length} images, ${FACILITIES.length} facilities`);
+            console.log(`Loaded: ${Object.keys(EXCEL_DATA).length} KPIs, ${FACILITIES.length} facilities`);
             return true;
         } catch (error) {
             console.error("Error loading Excel files:", error);
+            EXCEL_DATA = {
+                healthServices: 28817, nutritionService: 105860, srhServices: 12252,
+                pediatricsConsult: 8199, normalDeliveries: 539, cesareanDeliveries: 195,
+                totalDeliveries: 734, minorSurgeries: 4776, majorSurgeries: 261,
+                totalSurgeries: 5037, muacScreening: 46272, iycfSessions: 2848,
+                blanketDistribution: 86800, mhpssService: 380,
+                medicalPoints: 11, mobileTeams: 15, hospitals: 5
+            };
+            FACILITIES = [
+                { name: "Main Office", lat: 31.52395, lng: 34.43721, type: "admin" },
+                { name: "KH Guest House", lat: 31.34982, lng: 34.25288, type: "admin" }
+            ];
             return false;
         }
     }
@@ -428,6 +447,30 @@
         }
     }
 
+    function renderKPIs() {
+        document.getElementById('kpiContainer').innerHTML = `
+            <div class="kpi-card"><div class="kpi-title"><i class="fas fa-hospital-user"></i> HEALTH SERVICES</div><div class="kpi-value">${EXCEL_DATA.healthServices.toLocaleString()}</div><div class="kpi-sub-value"><span>SRH: ${EXCEL_DATA.srhServices.toLocaleString()}</span> <span>Peds: ${EXCEL_DATA.pediatricsConsult.toLocaleString()}</span></div><div class="kpi-sub">Total medical consultations</div></div>
+            <div class="kpi-card"><div class="kpi-title"><i class="fas fa-seedling"></i> NUTRITION REACH</div><div class="kpi-value">${EXCEL_DATA.nutritionService.toLocaleString()}</div><div class="kpi-sub-value"><span>MUAC: ${EXCEL_DATA.muacScreening.toLocaleString()}</span> <span>IYCF: ${EXCEL_DATA.iycfSessions.toLocaleString()}</span></div><div class="kpi-sub">Blankets: ${EXCEL_DATA.blanketDistribution.toLocaleString()}</div></div>
+            <div class="kpi-card"><div class="kpi-title"><i class="fas fa-procedures"></i> DELIVERIES + SURGERIES</div><div class="kpi-value">${(EXCEL_DATA.totalDeliveries + EXCEL_DATA.totalSurgeries).toLocaleString()}</div><div class="kpi-sub-value"><span>Deliveries: ${EXCEL_DATA.totalDeliveries.toLocaleString()}</span> <span>Surgeries: ${EXCEL_DATA.totalSurgeries.toLocaleString()}</span></div><div class="kpi-sub">Normal: ${EXCEL_DATA.normalDeliveries.toLocaleString()} · C-section: ${EXCEL_DATA.cesareanDeliveries.toLocaleString()}</div></div>
+            <div class="kpi-card"><div class="kpi-title"><i class="fas fa-hand-holding-heart"></i> SERVICE POINTS</div><div class="kpi-value">${EXCEL_DATA.medicalPoints + EXCEL_DATA.mobileTeams + EXCEL_DATA.hospitals}</div><div class="kpi-sub-value"><span>Medical points: ${EXCEL_DATA.medicalPoints}</span> <span>Mobile teams: ${EXCEL_DATA.mobileTeams}</span> <span>Hospitals: ${EXCEL_DATA.hospitals}</span></div><div class="kpi-sub">MHPSS sessions: ${EXCEL_DATA.mhpssService.toLocaleString()}</div></div>
+        `;
+    }
+
+    function renderCharts() {
+        const filtered = getFilteredData();
+        if(donut) donut.destroy();
+        donut = new Chart(document.getElementById('donutChart'), {type:'doughnut', data:{labels:Object.keys(filtered), datasets:[{data:Object.values(filtered), backgroundColor:['#2C6BFF','#3EC1D3','#F6AE5C','#A05E9C','#4C9AFF','#FF6B6B','#FFB347','#6C63FF']}]}, options:{responsive:true, plugins:{legend:{position:'bottom', labels:{color:'#CBD5E1', font:{size:10}}}}}});
+    }
+
+    function getFilteredData() {
+        if(currentDomain === "all") return {'SRH':EXCEL_DATA.srhServices,'Pediatrics':EXCEL_DATA.pediatricsConsult,'Deliveries':EXCEL_DATA.totalDeliveries,'Surgeries':EXCEL_DATA.totalSurgeries,'MUAC':EXCEL_DATA.muacScreening,'IYCF':EXCEL_DATA.iycfSessions,'Blankets':EXCEL_DATA.blanketDistribution,'MHPSS':EXCEL_DATA.mhpssService};
+        if(currentDomain === "reproductive") return {'SRH':EXCEL_DATA.srhServices,'Normal Delivery':EXCEL_DATA.normalDeliveries,'C-section':EXCEL_DATA.cesareanDeliveries};
+        if(currentDomain === "nutrition") return {'MUAC':EXCEL_DATA.muacScreening,'IYCF':EXCEL_DATA.iycfSessions,'Blankets':EXCEL_DATA.blanketDistribution};
+        if(currentDomain === "clinical") return {'Pediatrics':EXCEL_DATA.pediatricsConsult,'Minor Surgery':EXCEL_DATA.minorSurgeries,'Major Surgery':EXCEL_DATA.majorSurgeries};
+        if(currentDomain === "access") return {'Medical Points':EXCEL_DATA.medicalPoints,'Mobile Teams':EXCEL_DATA.mobileTeams,'Hospitals':EXCEL_DATA.hospitals};
+        return {};
+    }
+
     function renderEnhancedInsights() {
         const total = EXCEL_DATA.healthServices + EXCEL_DATA.nutritionService;
         const nutritionPct = ((EXCEL_DATA.nutritionService / total) * 100).toFixed(1);
@@ -453,7 +496,7 @@
                 <div class="insight-recommendation"><i class="fas fa-lightbulb" style="color:#FFC107;"></i> <strong>Recommendation:</strong> Expand MHPSS mobile teams. Target: 1,000+ sessions by May 2026.</div>
             </div>
             <div class="insight-section">
-                <div class="insight-header"><i class="fas fa-map-marked-alt"></i> Operational Sites</div>
+                <div class="insight-header"><i class="fas fa-map-marked-alt"></i> Operational Footprint</div>
                 <div class="insight-stat"><span class="insight-stat-label">📍 Active Facilities</span><span class="insight-stat-value">${FACILITIES.length} points on map</span></div>
                 <div class="insight-stat"><span class="insight-stat-label">🏥 Hospitals</span><span class="insight-stat-value">${EXCEL_DATA.hospitals}</span></div>
                 <div class="insight-stat"><span class="insight-stat-label">🚐 Mobile Teams</span><span class="insight-stat-value">${EXCEL_DATA.mobileTeams}</span></div>
@@ -466,30 +509,6 @@
             </div>
         `;
         document.getElementById('insightsPanel').innerHTML = insightsHtml;
-    }
-
-    function renderKPIs() {
-        document.getElementById('kpiContainer').innerHTML = `
-            <div class="kpi-card"><div class="kpi-title"><i class="fas fa-hospital-user"></i> HEALTH SERVICES</div><div class="kpi-value">${EXCEL_DATA.healthServices.toLocaleString()}</div><div class="kpi-sub-value"><span>SRH: ${EXCEL_DATA.srhServices.toLocaleString()}</span> <span>Peds: ${EXCEL_DATA.pediatricsConsult.toLocaleString()}</span></div><div class="kpi-sub">Total medical consultations</div></div>
-            <div class="kpi-card"><div class="kpi-title"><i class="fas fa-seedling"></i> NUTRITION REACH</div><div class="kpi-value">${EXCEL_DATA.nutritionService.toLocaleString()}</div><div class="kpi-sub-value"><span>MUAC: ${EXCEL_DATA.muacScreening.toLocaleString()}</span> <span>IYCF: ${EXCEL_DATA.iycfSessions.toLocaleString()}</span></div><div class="kpi-sub">Blankets: ${EXCEL_DATA.blanketDistribution.toLocaleString()}</div></div>
-            <div class="kpi-card"><div class="kpi-title"><i class="fas fa-procedures"></i> DELIVERIES + SURGERIES</div><div class="kpi-value">${(EXCEL_DATA.totalDeliveries + EXCEL_DATA.totalSurgeries).toLocaleString()}</div><div class="kpi-sub-value"><span>Deliveries: ${EXCEL_DATA.totalDeliveries.toLocaleString()}</span> <span>Surgeries: ${EXCEL_DATA.totalSurgeries.toLocaleString()}</span></div><div class="kpi-sub">Normal: ${EXCEL_DATA.normalDeliveries.toLocaleString()} · C-section: ${EXCEL_DATA.cesareanDeliveries.toLocaleString()}</div></div>
-            <div class="kpi-card"><div class="kpi-title"><i class="fas fa-hand-holding-heart"></i> SERVICE POINTS</div><div class="kpi-value">${EXCEL_DATA.medicalPoints + EXCEL_DATA.mobileTeams + EXCEL_DATA.hospitals}</div><div class="kpi-sub-value"><span>Medical points: ${EXCEL_DATA.medicalPoints}</span> <span>Mobile teams: ${EXCEL_DATA.mobileTeams}</span> <span>Hospitals: ${EXCEL_DATA.hospitals}</span></div><div class="kpi-sub">MHPSS sessions: ${EXCEL_DATA.mhpssService.toLocaleString()}</div></div>
-        `;
-    }
-
-    function getFilteredData() {
-        if(currentDomain === "all") return {'SRH':EXCEL_DATA.srhServices,'Pediatrics':EXCEL_DATA.pediatricsConsult,'Deliveries':EXCEL_DATA.totalDeliveries,'Surgeries':EXCEL_DATA.totalSurgeries,'MUAC':EXCEL_DATA.muacScreening,'IYCF':EXCEL_DATA.iycfSessions,'Blankets':EXCEL_DATA.blanketDistribution,'MHPSS':EXCEL_DATA.mhpssService};
-        if(currentDomain === "reproductive") return {'SRH':EXCEL_DATA.srhServices,'Normal Delivery':EXCEL_DATA.normalDeliveries,'C-section':EXCEL_DATA.cesareanDeliveries};
-        if(currentDomain === "nutrition") return {'MUAC':EXCEL_DATA.muacScreening,'IYCF':EXCEL_DATA.iycfSessions,'Blankets':EXCEL_DATA.blanketDistribution};
-        if(currentDomain === "clinical") return {'Pediatrics':EXCEL_DATA.pediatricsConsult,'Minor Surgery':EXCEL_DATA.minorSurgeries,'Major Surgery':EXCEL_DATA.majorSurgeries};
-        if(currentDomain === "access") return {'Medical Points':EXCEL_DATA.medicalPoints,'Mobile Teams':EXCEL_DATA.mobileTeams,'Hospitals':EXCEL_DATA.hospitals};
-        return {};
-    }
-
-    function renderCharts() {
-        const filtered = getFilteredData();
-        if(donut) donut.destroy();
-        donut = new Chart(document.getElementById('donutChart'), {type:'doughnut', data:{labels:Object.keys(filtered), datasets:[{data:Object.values(filtered), backgroundColor:['#2C6BFF','#3EC1D3','#F6AE5C','#A05E9C','#4C9AFF','#FF6B6B','#FFB347','#6C63FF']}]}, options:{responsive:true, plugins:{legend:{position:'bottom', labels:{color:'#CBD5E1', font:{size:10}}}}}});
     }
 
     function bindFilters() {
@@ -509,7 +528,9 @@
     }
 
     async function init() {
-        document.getElementById('galleryGrid').innerHTML = '<div style="text-align:center; padding:50px;">Loading data from 3 Excel files...</div>';
+        // Build gallery from GitHub first
+        buildGalleryFromGitHub();
+        
         await loadExcelData();
         initMap();
         renderKPIs();
