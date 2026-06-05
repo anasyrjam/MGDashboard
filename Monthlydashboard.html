@@ -107,6 +107,7 @@
         .chart-title { font-weight: 600; margin-bottom: 18px; border-left: 4px solid #2C6BFF; padding-left: 14px; font-size: 0.95rem; }
         canvas { max-height: 280px; width: 100%; }
         
+        /* Gallery Styles */
         .gallery-container {
             background: #11161F;
             border-radius: 28px;
@@ -257,7 +258,7 @@
         <div class="signature-name"><i class="fas fa-user-check"></i> Eng Anas Y. Aljamal</div>
         <div class="signature-title"><i class="fas fa-chart-line"></i> Information Management Officer</div>
     </div>
-    <div class="footer-note"><i class="fas fa-chart-simple"></i> MedGlobal Programs · Images loaded directly from GitHub</div>
+    <div class="footer-note"><i class="fas fa-chart-simple"></i> MedGlobal Programs · Data from Excel files (auto-updates)</div>
 </div>
 
 <div id="lightboxOverlay" class="lightbox-overlay" onclick="closeLightbox()">
@@ -267,49 +268,14 @@
 
 <script>
     let EXCEL_DATA = {};
-    let FACILITIES = [];
     let GALLERY_IMAGES = [];
+    let FACILITIES = [];
     let map, donut, markerCluster;
     let currentDomain = "all";
 
-    // GitHub repository info
-    const GITHUB_USER = "anasyrjam";
-    const GITHUB_REPO = "MGDashboard";
-    const IMAGES_FOLDER = "images";
-    
-    // List of image filenames (add all your photo1.jpeg, photo2.jpeg, etc.)
-    // IMPORTANT: Update this list whenever you add new images to the folder
-    const IMAGE_FILES = [
-        "photo1.jpeg",
-        "photo2.jpeg",
-        "photo3.jpeg",
-        "photo4.jpeg",
-        "photo5.jpeg",
-        "photo6.jpeg",
-        "photo7.jpeg",
-        "photo8.jpeg",
-        "photo9.jpeg"
-    ];
-
-    // Build gallery images directly from GitHub
-    function buildGalleryFromGitHub() {
-        const baseUrl = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/${IMAGES_FOLDER}/`;
-        GALLERY_IMAGES = [];
-        for (let i = 0; i < IMAGE_FILES.length; i++) {
-            const filename = IMAGE_FILES[i];
-            // Extract caption from filename (remove extension, replace underscores with spaces)
-            let caption = filename.replace(/\.[^/.]+$/, "").replace(/_/g, " ");
-            caption = caption.charAt(0).toUpperCase() + caption.slice(1);
-            GALLERY_IMAGES.push({
-                url: baseUrl + filename,
-                caption: caption
-            });
-        }
-        console.log(`Built ${GALLERY_IMAGES.length} images from GitHub`);
-    }
-
-    // روابط التحميل المباشر للملفات
+    // روابط التحميل المباشر للملفات الثلاثة
     const DATA_FILE_URL = "https://medglobalorg-my.sharepoint.com/personal/aljamal_medglobal_org/_layouts/15/download.aspx?share=IQAV1E1TMc5_RLCO3GMG8yqKAbwF3ad25kcqQTKffFx-8dQ";
+    const PHOTOS_FILE_URL = "https://medglobalorg-my.sharepoint.com/personal/aljamal_medglobal_org/_layouts/15/download.aspx?share=IQDdo2Rm6jwCS7zJ969VCmr_ARiTuIsu_xCMwZdSF68RmhA";
     const FACILITIES_FILE_URL = "https://medglobalorg-my.sharepoint.com/personal/aljamal_medglobal_org/_layouts/15/download.aspx?share=IQBN2j25uAq6SJDnean05K3uAeoKhOhsS9Sx_V43O95lx6M";
 
     async function loadExcelData() {
@@ -341,7 +307,33 @@
                 hospitals: jsonData[16]?.[1] || 5
             };
 
-            // 2. تحميل ملف المواقع (الخريطة)
+            // 2. تحميل ملف الصور
+            const photosResponse = await fetch(PHOTOS_FILE_URL);
+            const photosArrayBuffer = await photosResponse.arrayBuffer();
+            const photosWorkbook = XLSX.read(photosArrayBuffer, { type: 'array' });
+            const photosSheet = photosWorkbook.Sheets[photosWorkbook.SheetNames[0]];
+            const photosData = XLSX.utils.sheet_to_json(photosSheet, { header: 1, defval: "" });
+            
+            GALLERY_IMAGES = [];
+            for (let i = 1; i < photosData.length; i++) {
+                const row = photosData[i];
+                if (row && row.length >= 2) {
+                    const caption = row[0]?.toString().trim() || "Field activity";
+                    let url = row[1]?.toString().trim();
+                    if (url && url !== "") {
+                        GALLERY_IMAGES.push({ url, caption });
+                    }
+                }
+            }
+            
+            if (GALLERY_IMAGES.length === 0) {
+                GALLERY_IMAGES = [
+                    { url: "https://picsum.photos/id/104/400/400", caption: "Mobile medical team" },
+                    { url: "https://picsum.photos/id/116/400/400", caption: "MUAC screening for children" }
+                ];
+            }
+
+            // 3. تحميل ملف المواقع (الخريطة)
             const facilitiesResponse = await fetch(FACILITIES_FILE_URL);
             const facilitiesArrayBuffer = await facilitiesResponse.arrayBuffer();
             const facilitiesWorkbook = XLSX.read(facilitiesArrayBuffer, { type: 'array' });
@@ -365,12 +357,11 @@
             if (FACILITIES.length === 0) {
                 FACILITIES = [
                     { name: "Main Office", lat: 31.52395, lng: 34.43721, type: "admin" },
-                    { name: "KH Guest House", lat: 31.34982, lng: 34.25288, type: "admin" },
-                    { name: "Al Quds Hospital", lat: 31.50623, lng: 34.43032, type: "hospital" }
+                    { name: "KH Guest House", lat: 31.34982, lng: 34.25288, type: "admin" }
                 ];
             }
             
-            console.log(`Loaded: ${Object.keys(EXCEL_DATA).length} KPIs, ${FACILITIES.length} facilities`);
+            console.log(`Loaded: ${Object.keys(EXCEL_DATA).length} KPIs, ${GALLERY_IMAGES.length} images, ${FACILITIES.length} facilities`);
             return true;
         } catch (error) {
             console.error("Error loading Excel files:", error);
@@ -382,6 +373,10 @@
                 blanketDistribution: 86800, mhpssService: 380,
                 medicalPoints: 11, mobileTeams: 15, hospitals: 5
             };
+            GALLERY_IMAGES = [
+                { url: "https://picsum.photos/id/104/400/400", caption: "Mobile medical team" },
+                { url: "https://picsum.photos/id/116/400/400", caption: "MUAC screening" }
+            ];
             FACILITIES = [
                 { name: "Main Office", lat: 31.52395, lng: 34.43721, type: "admin" },
                 { name: "KH Guest House", lat: 31.34982, lng: 34.25288, type: "admin" }
@@ -496,7 +491,7 @@
                 <div class="insight-recommendation"><i class="fas fa-lightbulb" style="color:#FFC107;"></i> <strong>Recommendation:</strong> Expand MHPSS mobile teams. Target: 1,000+ sessions by May 2026.</div>
             </div>
             <div class="insight-section">
-                <div class="insight-header"><i class="fas fa-map-marked-alt"></i> Operational Footprint</div>
+                <div class="insight-header"><i class="fas fa-map-marked-alt"></i> Operational Sites</div>
                 <div class="insight-stat"><span class="insight-stat-label">📍 Active Facilities</span><span class="insight-stat-value">${FACILITIES.length} points on map</span></div>
                 <div class="insight-stat"><span class="insight-stat-label">🏥 Hospitals</span><span class="insight-stat-value">${EXCEL_DATA.hospitals}</span></div>
                 <div class="insight-stat"><span class="insight-stat-label">🚐 Mobile Teams</span><span class="insight-stat-value">${EXCEL_DATA.mobileTeams}</span></div>
@@ -528,9 +523,6 @@
     }
 
     async function init() {
-        // Build gallery from GitHub first
-        buildGalleryFromGitHub();
-        
         await loadExcelData();
         initMap();
         renderKPIs();
